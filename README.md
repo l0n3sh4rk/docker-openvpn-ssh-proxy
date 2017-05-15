@@ -1,4 +1,4 @@
-# Transmission with WebUI and OpenVPN
+# OpenVPN and SSH Proxy
 Docker container which runs Transmission torrent client with WebUI while connecting to OpenVPN.
 It bundles certificates and configurations for the following VPN providers:
 
@@ -78,58 +78,6 @@ By default a folder named transmission-home will also be created under /data, th
 |`OPENVPN_OPTS` | Will be passed to OpenVPN on startup | See [OpenVPN doc](https://openvpn.net/index.php/open-source/documentation/manuals/65-openvpn-20x-manpage.html) |
 |`LOCAL_NETWORK` | Sets the local network that should have access. | `LOCAL_NETWORK=192.168.0.0/24`|
 
-### Transmission configuration options
-
-You may override transmission options by setting the appropriate environment variable.
-
-The environment variables are the same name as used in the transmission settings.json file
-and follow the format given in these examples:
-
-| Transmission variable name | Environment variable name |
-|----------------------------|---------------------------|
-| `speed-limit-up` | `TRANSMISSION_SPEED_LIMIT_UP` |
-| `speed-limit-up-enabled` | `TRANSMISSION_SPEED_LIMIT_UP_ENABLED` |
-| `ratio-limit` | `TRANSMISSION_RATIO_LIMIT` |
-| `ratio-limit-enabled` | `TRANSMISSION_RATIO_LIMIT_ENABLED` |
-
-As you can see the variables are prefixed with `TRANSMISSION_`, the variable is capitalized, and `-` is converted to `_`.
-
-PS: `TRANSMISSION_BIND_ADDRESS_IPV4` will be overridden to the IP assigned to your OpenVPN tunnel interface.
-This is to prevent leaking the host IP.
-
-### User configuration options
-
-By default everything will run as the root user. However, it is possible to change who runs the transmission process.
-You may set the following parameters to customize the user id that runs transmission.
-
-| Variable | Function | Example |
-|----------|----------|-------|
-|`PUID` | Sets the user id who will run transmission | `PUID=1003`|
-|`PGID` | Sets the group id for the transmission user | `PGID=1003` |
-
-#### Use docker env file
-Another way is to use a docker env file where you can easily store all your env variables and maintain multiple configurations for different providers.
-In the GitHub repository there is a provided DockerEnv file with all the current transmission and openvpn environment variables. You can use this to create local configurations
-by filling in the details and removing the # of the ones you want to use.
-
-Please note that if you pass in env. variables on the command line these will override the ones in the env file.
-
-See explanation of variables above.
-To use this env file, use the following to run the docker image:
-```
-$ docker run --privileged  -d \
-              -v /your/storage/path/:/data \
-              -v /etc/localtime:/etc/localtime:ro \
-              --env-file /your/docker/env/file \
-              -p 9091:9091 \
-              haugene/transmission-openvpn
-```
-
-## Access the WebUI
-But what's going on? My http://my-host:9091 isn't responding?
-This is because the VPN is active, and since docker is running in a different ip range than your client the response
-to your request will be treated as "non-local" traffic and therefore be routed out through the VPN interface.
-
 ### How to fix this
 The container supports the `LOCAL_NETWORK` environment variable. For instance if your local network uses the IP range 192.168.0.0/24 you would pass `-e LOCAL_NETWORK=192.168.0.0/24`.
 
@@ -182,19 +130,6 @@ Add a new volume mount to your `docker run` command that mounts your config file
 Then you can set `OPENVPN_PROVIDER=CUSTOM`and the container will use the config you provided. If you are using AirVPN or other provider with credentials in the config file, you still need to set `OPENVPN_USERNAME` and `OPENVPN_PASSWORD` as this is required by the startup script. They will not be read by the .ovpn file, so you can set them to whatever.
 
 Note that you still need to modify your .ovpn file as described in the previous section. If you have an separate ca.crt file your volume mount should be a folder containing both the ca.crt and the .ovpn config.
-
-## Controlling Transmission remotely
-The container exposes /config as a volume. This is the directory where the supplied transmission and OpenVPN credentials will be stored.
-If you have transmission authentication enabled and want scripts in another container to access and
-control the transmission-daemon, this can be a handy way to access the credentials.
-For example, another container may pause or restrict transmission speeds while the server is streaming video.
-
-## Running on ARM (Raspberry PI)
-Since the Raspberry PI runs on an ARM architecture instead of x64, the existing x64 images will not
-work properly. To support users that wish to run this container on a Raspberry Pi, there are 2 additional
-Dockerfiles created. The Dockerfiles supported by the Raspberry PI are Dockerfile.armhf -- there is
-also an example docker-compose-armhf file that shows how you might use Transmission/OpenVPN and the
-corresponding nginx reverse proxy on an RPI machine.
 
 ## Make it work on Synology NAS
 Here are the steps to run it on a Synology NAS (Tested on DSM 6) :
